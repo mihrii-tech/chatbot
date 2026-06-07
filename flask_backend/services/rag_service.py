@@ -172,12 +172,16 @@ def run_rag_pipeline(messages: list) -> dict:
     Kør komplet RAG pipeline.
     Returnerer: { message, products, suggestLead, intent }
     """
+    import time
+    t0 = time.time()
     user_msg = (messages[-1].get("content") or "") if messages else ""
     logger.info(f'[RAG] Behandler: "{user_msg[:80]}..."')
 
     # Step 1: Intent
+    t1 = time.time()
     intent = extract_intent(user_msg, messages[:-1])
-    logger.info(f"[RAG] Intent: {intent}")
+    t2 = time.time()
+    logger.info(f"[RAG] Intent: {intent} (tog {t2-t1:.2f}s)")
 
     # Step 2: Produktsøgning
     products = []
@@ -189,6 +193,7 @@ def run_rag_pipeline(messages: list) -> dict:
         or not intent.get("isGeneralQuestion")
     )
 
+    t4 = t2
     if is_product_q:
         query = _build_search_query(intent, user_msg)
         budget_max = intent.get("budgetMax") or intent.get("budget")
@@ -198,8 +203,10 @@ def run_rag_pipeline(messages: list) -> dict:
             "productType": intent.get("bikeType"),
         }
         logger.info(f'[RAG] Søger: "{query}" med filtre: {filters}')
+        t3 = time.time()
         products = search_products(query, filters, limit=4)
-        logger.info(f"[RAG] Fandt {len(products)} produkter")
+        t4 = time.time()
+        logger.info(f"[RAG] Fandt {len(products)} produkter (tog {t4-t3:.2f}s)")
 
     # Step 3: Firmainformation
     firm_text = _search_firm_info(user_msg)
@@ -208,7 +215,12 @@ def run_rag_pipeline(messages: list) -> dict:
     context = _build_context(products, firm_text, intent)
 
     # Step 5: Generer svar
+    t5 = time.time()
     ai_response = generate_response(messages, context)
+    t6 = time.time()
+    logger.info(f"[RAG] Genererede svar (tog {t6-t5:.2f}s)")
+
+    logger.info(f"[RAG] Samlet tid: {time.time()-t0:.2f}s")
 
     # Step 6: Lead forslag
     suggest_lead = _should_suggest_lead(messages, intent)
