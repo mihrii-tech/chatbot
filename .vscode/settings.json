@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "/Users/mihri/chatbot_venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/flask_backend",
+    "/Users/mihri/chatbot_venv/lib/python3.13/site-packages"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/flask_backend",
+    "/Users/mihri/chatbot_venv/lib/python3.13/site-packages"
+  ]
+}

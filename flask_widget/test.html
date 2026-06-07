@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velohouse AI Chatbot – Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; padding: 20px;
+    }
+    .container {
+      background: white; border-radius: 28px; padding: 48px;
+      max-width: 720px; width: 100%; text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.3);
+    }
+    .logo { font-size: 56px; margin-bottom: 16px; }
+    h1 { font-size: 32px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 16px; margin-bottom: 40px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1px solid #bbf7d0; border-radius: 20px;
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      color: #166534; margin-bottom: 32px;
+    }
+    .status-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-bottom: 32px;
+    }
+    .status-card {
+      background: #f8fafc; border-radius: 14px; padding: 20px;
+      border: 1.5px solid #e2e8f0; text-align: left;
+    }
+    .status-card .label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #94a3b8; display: block; margin-bottom: 8px;
+    }
+    .status-card .value { font-size: 15px; font-weight: 600; color: #1e293b; }
+    .status-card .tag {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+    }
+    .tag-live { background: #dcfce7; color: #166534; }
+    .tag-mock { background: #fef3c7; color: #92400e; }
+    .indicator { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .dot.red { background: #ef4444; animation: none; }
+    .questions {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border-radius: 16px; padding: 24px; margin-bottom: 32px;
+      border: 1px solid #e2e8f0; text-align: left;
+    }
+    .questions h3 {
+      font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 14px;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .q-item {
+      background: white; border-radius: 10px; padding: 12px 14px;
+      font-size: 13px; color: #374151; cursor: pointer;
+      border: 1.5px solid #e2e8f0; transition: all 0.2s; text-align: left;
+    }
+    .q-item:hover {
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      color: white; border-color: transparent; transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0,184,148,0.3);
+    }
+    .open-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      color: white; border: none; border-radius: 14px;
+      font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      font-family: inherit; box-shadow: 0 8px 24px rgba(0,184,148,0.35);
+    }
+    .open-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,184,148,0.45); }
+    .info { margin-top: 28px; font-size: 13px; color: #94a3b8; line-height: 1.6; }
+    .info code {
+      background: #f1f5f9; color: #475569;
+      padding: 2px 6px; border-radius: 4px; font-size: 12px;
+    }
+    .shopify-section {
+      margin-top: 32px; background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+      border: 1px solid #e9d5ff; border-radius: 16px; padding: 24px; text-align: left;
+    }
+    .shopify-section h3 { font-size: 14px; font-weight: 700; color: #6b21a8; margin-bottom: 12px; }
+    .shopify-section code {
+      display: block; background: #1a1a2e; color: #00b894;
+      padding: 12px 16px; border-radius: 10px; font-size: 12px;
+      line-height: 1.6; margin-top: 8px; overflow-x: auto; white-space: pre;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">🚴</div>
+  <h1>Velohouse AI Chatbot</h1>
+  <p class="subtitle">Python Flask + Google Gemini + Shopify Storefront API</p>
+
+  <div class="badge">✅ Flask Backend v2.0 – Shopify Live Data</div>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <span class="label">Backend</span>
+      <div class="value">
+        <span class="indicator">
+          <span class="dot" id="status-dot"></span>
+          <span id="status-text">Checker...</span>
+        </span>
+      </div>
+    </div>
+    <div class="status-card">
+      <span class="label">Shopify Mode</span>
+      <div class="value" id="mode-value">
+        <span class="tag tag-live">Live Data</span>
+      </div>
+    </div>
+    <div class="status-card">
+      <span class="label">AI Model</span>
+      <div class="value">🤖 Gemini 2.0 Flash</div>
+    </div>
+    <div class="status-card">
+      <span class="label">API URL</span>
+      <div class="value" style="font-size:12px;">http://localhost:5001</div>
+    </div>
+  </div>
+
+  <div class="questions">
+    <h3>🧪 Testspørgsmål – klik for at prøve</h3>
+    <div class="q-grid">
+      <div class="q-item" onclick="triggerQ(this)">Hvilken elcykel passer til mig?</div>
+      <div class="q-item" onclick="triggerQ(this)">Jeg pendler 15 km hver vej</div>
+      <div class="q-item" onclick="triggerQ(this)">Hvad er en speed pedelec?</div>
+      <div class="q-item" onclick="triggerQ(this)">Hvilken ladcykel til 2 børn?</div>
+      <div class="q-item" onclick="triggerQ(this)">Hvad koster service?</div>
+      <div class="q-item" onclick="triggerQ(this)">Kan jeg booke testkørsel?</div>
+      <div class="q-item" onclick="triggerQ(this)">Jeg er 175 cm – hvilken størrelse?</div>
+      <div class="q-item" onclick="triggerQ(this)">Budget på 25.000 kr. til elcykel</div>
+    </div>
+  </div>
+
+  <button class="open-btn" onclick="window.VHChatbot && window.VHChatbot.toggle()">
+    🚴 Åbn AI Chatbot
+  </button>
+
+  <div class="info">
+    <p>Backend kører på <code>http://localhost:5001</code></p>
+    <p style="margin-top:8px;">Start med: <code>cd flask_backend && python app.py</code></p>
+  </div>
+
+  <div class="shopify-section">
+    <h3>🛍️ Indsæt på Shopify – kopier denne kode</h3>
+    <p style="font-size:13px; color:#6b21a8; margin-bottom:4px;">
+      Gå til <strong>Online Store → Themes → Edit code → theme.liquid</strong> og indsæt inden <code>&lt;/body&gt;</code>:
+    </p>
+    <code id="shopify-code">&lt;script&gt;
+  window.VelohouseChatConfig = {
+    apiUrl: 'https://DIN-SERVER.com',
+    primaryColor: '#00b894',
+    botName: 'Velohouse AI Rådgiver',
+  };
+&lt;/script&gt;
+&lt;script src="https://DIN-SERVER.com/static/chatbot.js" defer&gt;&lt;/script&gt;</code>
+  </div>
+</div>
+
+<!-- Chatbot konfiguration -->
+<script>
+  window.VelohouseChatConfig = {
+    apiUrl: 'http://localhost:5001',
+    primaryColor: '#00b894',
+    darkColor: '#1a1a2e',
+    botName: 'Velohouse AI Rådgiver',
+    botAvatar: '🚴',
+    welcomeMessage: 'Hej! 👋 Jeg er din personlige cykelrådgiver hos Velohouse.\n\nJeg kan hjælpe dig med at finde den perfekte cykel, svare på spørgsmål om service, levering, garanti og meget mere.\n\nHvad kan jeg hjælpe dig med i dag?',
+    suggestedQuestions: [
+      'Hvilken elcykel passer til mig?',
+      'Hvad er en speed pedelec?',
+      'Kan jeg booke testkørsel?',
+      'Hvad koster service?',
+    ]
+  };
+</script>
+<script src="chatbot.js" defer></script>
+
+<script>
+  function triggerQ(el) {
+    window.VHChatbot && window.VHChatbot.open();
+    setTimeout(() => window.VHChatbot && window.VHChatbot.sendSuggestion(el.textContent), 500);
+  }
+
+  async function checkBackend() {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    const mode = document.getElementById('mode-value');
+    try {
+      const r = await fetch('http://localhost:5001/api/health', { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      if (r.ok) {
+        txt.textContent = '✅ Online';
+        txt.style.color = '#22c55e';
+        dot.className = 'dot';
+        mode.innerHTML = d.mode === 'shopify'
+          ? '<span class="tag tag-live">🛍️ Shopify Live</span>'
+          : '<span class="tag tag-mock">🧪 Mock Data</span>';
+      } else throw new Error();
+    } catch {
+      txt.textContent = '❌ Offline – start backend';
+      txt.style.color = '#ef4444';
+      dot.className = 'dot red';
+    }
+  }
+  checkBackend();
+  setInterval(checkBackend, 15000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velohouse Chatbot – Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 680px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.15);
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 16px;
+      margin-bottom: 40px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .status-card {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1.5px solid #e2e8f0;
+      text-align: left;
+    }
+    .status-card .label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .status-card .value {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .status-card .indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .dot.red { background: #ef4444; animation: none; }
+    .test-questions {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      border: 1px solid #bbf7d0;
+      text-align: left;
+    }
+    .test-questions h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #166534;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .question-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .question-item {
+      background: white;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #374151;
+      cursor: pointer;
+      border: 1px solid #d1fae5;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .question-item:hover {
+      background: #00b894;
+      color: white;
+      border-color: #00b894;
+      transform: translateY(-1px);
+    }
+    .info-box {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 13px;
+      color: #92400e;
+      margin-bottom: 24px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .open-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      box-shadow: 0 4px 16px rgba(0, 184, 148, 0.3);
+    }
+    .open-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 184, 148, 0.4);
+    }
+    .api-status {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    #backend-status {
+      font-weight: 600;
+    }
+    .backend-ok { color: #22c55e; }
+    .backend-err { color: #ef4444; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">🚴</div>
+  <h1>Velohouse Chatbot</h1>
+  <p class="subtitle">Test-side for AI-salgsassistenten</p>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="label">Backend Mode</div>
+      <div class="value">🧪 Mock Produkter</div>
+    </div>
+    <div class="status-card">
+      <div class="label">AI Model</div>
+      <div class="value">🤖 Google Gemini</div>
+    </div>
+    <div class="status-card">
+      <div class="label">Backend Status</div>
+      <div class="value">
+        <span class="indicator">
+          <span class="dot" id="status-dot"></span>
+          <span id="backend-status">Checker...</span>
+        </span>
+      </div>
+    </div>
+    <div class="status-card">
+      <div class="label">API URL</div>
+      <div class="value" style="font-size:12px; word-break:break-all;">http://localhost:3001</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    ⚠️ <strong>Test-mode:</strong> Chatbotten bruger mock-produkter (ikke rigtige Shopify-data). Tilføj dine Shopify credentials i <code>.env</code> for rigtige produkter.
+  </div>
+
+  <div class="test-questions">
+    <h3>🧪 Prøv disse testspørgsmål</h3>
+    <div class="question-list">
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Hvilken elcykel passer til mig?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Jeg skal pendle 15 km hver vej</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Hvad er en speed pedelec?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Hvilken ladcykel til børn?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Hvad koster service?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Kan jeg booke testkørsel?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Jeg er 175 cm – hvilken størrelse?</div>
+      <div class="question-item" onclick="VHChatbot.open(); setTimeout(() => VHChatbot.sendSuggestion(this.textContent.replace('→ ', '')), 500)">→ Hvilken hjelm anbefaler I?</div>
+    </div>
+  </div>
+
+  <button class="open-btn" onclick="window.VHChatbot && window.VHChatbot.toggle()">
+    🚴 Åbn Chatbot
+  </button>
+
+  <p class="api-status">
+    Backend: <span id="backend-status-text">Checker forbindelse...</span>
+  </p>
+</div>
+
+<!-- Chatbot Konfiguration -->
+<script>
+  window.VelohouseChatConfig = {
+    apiUrl: 'http://localhost:3001',
+    primaryColor: '#00b894',
+    darkColor: '#1a1a2e',
+    botName: 'Velohouse AI Rådgiver',
+    botAvatar: '🚴',
+    welcomeMessage: 'Hej! 👋 Jeg er din personlige cykelrådgiver hos Velohouse.\n\nJeg kan hjælpe dig med at finde den perfekte cykel, besvare spørgsmål om service, levering, garanti og meget mere.\n\nHvad kan jeg hjælpe dig med i dag?',
+    suggestedQuestions: [
+      'Hvilken elcykel passer til mig?',
+      'Hvad er en speed pedelec?',
+      'Kan jeg booke testkørsel?',
+      'Hvad koster service?',
+    ]
+  };
+</script>
+
+<!-- Chatbot Widget (loades asynkront) -->
+<script src="chatbot.js" defer></script>
+
+<!-- Backend status check -->
+<script>
+  async function checkBackendStatus() {
+    const statusEl = document.getElementById('backend-status-text');
+    const dotEl = document.getElementById('status-dot');
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/health', {
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        statusEl.textContent = '✅ Online – ' + data.mode;
+        statusEl.className = 'backend-ok';
+        dotEl.className = 'dot';
+      } else {
+        throw new Error('Server svarede med fejl');
+      }
+    } catch (err) {
+      statusEl.textContent = '❌ Offline – Start backend med: npm run dev';
+      statusEl.className = 'backend-err';
+      dotEl.className = 'dot red';
+    }
+  }
+  
+  checkBackendStatus();
+  setInterval(checkBackendStatus, 15000);
+</script>
+
+</body>
+</html>

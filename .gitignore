@@ -1,0 +1,22 @@
+# Python Virtual Environment
+flask_backend/venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Node Modules
+node_modules/
+backend/node_modules/
+
+# Environment variables (Credentials)
+.env
+flask_backend/.env
+.env.local
+
+# OS files
+.DS_Store
+
+# SQLite Database
+flask_backend/data/velohouse.db
+flask_backend/data/*.db

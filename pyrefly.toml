@@ -1,0 +1,2 @@
+python-interpreter-path = "/Users/mihri/chatbot_venv/bin/python"
+search-path = ["flask_backend"]

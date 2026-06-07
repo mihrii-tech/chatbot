@@ -1,0 +1,7 @@
+{
+  "venvPath": "/Users/mihri",
+  "venv": "chatbot_venv",
+  "extraPaths": [
+    "flask_backend"
+  ]
+}
