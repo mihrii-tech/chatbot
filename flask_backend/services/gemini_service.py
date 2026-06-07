@@ -54,85 +54,134 @@ VELOHOUSE INFORMATION:
 """
 
 
-# ─── Intent udtrækning ────────────────────────────────────────
+# ─── Intent udtrækning (Hurtig lokal parser) ──────────────────
 
 def extract_intent(user_message: str, history: list = []) -> dict:
-    """Analysér kundens besked og returnér struktureret intent."""
-    prompt = f"""Analyser denne besked fra en cykelbutik-kunde og returner KUN et JSON-objekt (ingen markdown, ingen forklaring).
-
-Besked: "{user_message}"
-
-Returner præcis dette JSON-format:
-{{
-  "bikeType": null,
-  "budget": null,
-  "budgetMax": null,
-  "purpose": null,
-  "heightCm": null,
-  "brand": null,
-  "color": null,
-  "size": null,
-  "needsService": false,
-  "wantsTestRide": false,
-  "wantsContact": false,
-  "isGeneralQuestion": false,
-  "searchKeywords": []
-}}
-
-bikeType kan være: "elcykel" | "ladcykel" | "speed-pedelec" | "mountainbike" | "citybike" | "hybridcykel" | "racercykel" | "børnecykel" | "gravel" | null
-purpose kan være: "pendling" | "sport" | "familie" | "børn" | "bykørsel" | "motion" | "bakker" | "lang-tur" | null
-budget og budgetMax er tal i DKK eller null"""
-
-    try:
-        result = _get_client().models.generate_content(model=INTENT_MODEL, contents=prompt)
-        text = result.text
-        if not text:
-            raise ValueError("Tomt svar modtaget fra Gemini")
-        text = text.strip()
-        # Fjern markdown code blocks hvis de er der
-        clean = text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean)
-    except Exception as e:
-        logger.error(f"[Gemini] Intent fejl: {e}")
-        return {
-            "bikeType": None,
-            "budget": None,
-            "budgetMax": None,
-            "purpose": None,
-            "heightCm": None,
-            "brand": None,
-            "searchKeywords": [user_message[:50]],
-            "isGeneralQuestion": True,
-            "needsService": False,
-            "wantsTestRide": False,
-            "wantsContact": False,
-        }
+    """Analysér kundens besked lokalt for at spare API-kald og reducere responstid."""
+    import re
+    
+    msg = user_message.lower()
+    
+    # 1. Uddrag højde (f.eks. "jeg er 180 cm", "højde: 175")
+    height_match = re.search(r'\b(1[4-9]\d|200)\s*(?:cm|centimeter)?\b', msg)
+    height = int(height_match.group(1)) if height_match else None
+    
+    # 2. Uddrag budget (f.eks. "max 25000", "budget 20000 DKK")
+    budget_match = re.search(r'\b(?:under|max|budget|omkring|ca\.?)\s*(\d{4,6})\b', msg)
+    budget_max = int(budget_match.group(1)) if budget_match else None
+    
+    # 3. Match cykeltype
+    bike_types = ["elcykel", "elcykler", "ladcykel", "ladcykler", "speed pedelec", "speed-pedelec", "speedpedelec", "mountainbike", "mtb", "citybike", "hybridcykel", "racercykel", "børnecykel", "børnecykler", "gravel"]
+    bike_type = None
+    for bt in bike_types:
+        if bt in msg:
+            if "børne" in bt:
+                bike_type = "børnecykel"
+            elif "lad" in bt:
+                bike_type = "ladcykel"
+            elif "speed" in bt:
+                bike_type = "speed-pedelec"
+            elif "el" in bt:
+                bike_type = "elcykel"
+            else:
+                bike_type = bt
+            break
+            
+    # 4. Match mærke
+    brands = ["riese", "müller", "riese & müller", "riese and muller", "r&m", "cube", "gazelle", "trek", "specialized", "giro"]
+    brand = None
+    for b in brands:
+        if b in msg:
+            if b in ["riese", "müller", "riese & müller", "riese and muller", "r&m"]:
+                brand = "Riese & Müller"
+            else:
+                brand = b.capitalize()
+            break
+            
+    # 5. Match formål
+    purposes = ["pendling", "pendle", "sport", "familie", "børn", "bykørsel", "motion", "bakker", "lang-tur", "langtur"]
+    purpose = None
+    for p in purposes:
+        if p in msg:
+            if "børn" in p:
+                purpose = "børn"
+            elif "pendl" in p:
+                purpose = "pendling"
+            else:
+                purpose = p
+            break
+            
+    # 6. Find søgeord (fjern stopord)
+    stop_words = {"jeg", "har", "i", "en", "et", "og", "til", "er", "de", "den", "der", "med", "på", "for", "at", "af", "som", "om", "vi", "kan", "vil", "skal", "kunne", "ville", "skulle", "hvad", "hvem", "hvor", "hvornår", "hvorfor", "hvordan", "ja", "nej", "hej", "goddag", "leder", "efter", "søger", "gerne", "finde", "købe", "nogle"}
+    words = re.findall(r'\b[a-zA-ZæøåÆØÅ]{3,15}\b', msg)
+    keywords = [w for w in words if w not in stop_words]
+    
+    # 7. Lead indikatorer
+    wants_contact = any(w in msg for w in ["kontakt", "ring", "skriv", "mail", "telefon", "tilsend", "ringes", "kontaktes"])
+    wants_test_ride = any(w in msg for w in ["testkørs", "prøvekørs", "prøve cykel", "test ride", "prøvetur"])
+    needs_service = any(w in msg for w in ["service", "reparation", "værksted", "eftersyn", "punkter", "lappe"])
+    
+    # 8. Generelt spørgsmål (hvis intet cykelrelateret eller hvis det er en hilsen)
+    greetings = ["hej", "hejsa", "goddag", "davs", "dav", "hallo", "hello", "hi"]
+    is_greeting = all(w in stop_words or w in greetings for w in words) if words else True
+    is_general_info = any(w in msg for w in ["åbningstider", "adresse", "levering", "fragt", "retur", "garanti", "finansiering"])
+    
+    is_general = is_greeting or is_general_info or (not bike_type and not brand and not keywords)
+    
+    return {
+        "bikeType": bike_type,
+        "budget": budget_max,
+        "budgetMax": budget_max,
+        "purpose": purpose,
+        "heightCm": height,
+        "brand": brand,
+        "color": None,
+        "size": None,
+        "needsService": needs_service,
+        "wantsTestRide": wants_test_ride,
+        "wantsContact": wants_contact,
+        "isGeneralQuestion": is_general,
+        "searchKeywords": keywords[:3]
+    }
 
 
 # ─── Svar generering ──────────────────────────────────────────
 
 def generate_response(messages: list, context: str) -> str:
-    """Generer AI-svar med RAG kontekst."""
+    """Generer AI-svar med RAG kontekst ved brug af direkte generate_content for lavere latency."""
     try:
+        contents: list[types.Content] = []
+        
         # Byg historik (seneste 8 beskeder, undtagen den sidste)
-        history: list[types.Content | types.ContentDict] = []
         for msg in messages[-9:-1]:
             role = "model" if msg["role"] == "assistant" else "user"
-            history.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
+            contents.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
 
+        # Tilføj den aktuelle besked med RAG kontekst
         last_msg = messages[-1]["content"]
-        full_prompt = f"""{SYSTEM_PROMPT}
-
-─── TILGÆNGELIG KONTEKST (brug KUN disse data) ───
+        user_prompt = f"""─── TILGÆNGELIG KONTEKST (brug KUN disse data til produktanbefalinger) ───
 {context}
-─────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────
 
 Brugerens spørgsmål: {last_msg}
 
-Husk: Svar på dansk, vær hjælpsom og anbefal kun produkter fra konteksten ovenfor."""
+Husk: Svar på dansk med stor varme. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
 
-        chat = _get_client().chats.create(model=CHAT_MODEL, history=history)
-        result = chat.send_message(full_prompt)
+        contents.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
+
+        # Definer konfiguration med system_instruction
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.7,
+        )
+
+        # Generer svar direkte
+        result = _get_client().models.generate_content(
+            model=CHAT_MODEL,
+            contents=contents,
+            config=config
+        )
+        
         text = result.text
         if not text:
             raise RuntimeError("Intet svar modtaget fra Gemini")
