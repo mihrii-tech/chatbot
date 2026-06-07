@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 # ─── App ──────────────────────────────────────────────────────
 app = Flask(__name__)
 
+# Init database
+init_db()
+
 # ─── CORS ─────────────────────────────────────────────────────
 allowed_origins_raw = os.getenv("CORS_ORIGINS", "")
 allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
@@ -108,9 +111,6 @@ def server_error(e):
 
 # ─── Start ────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Init database
-    init_db()
-
     port = int(os.getenv("PORT", 5001))
     debug = os.getenv("FLASK_ENV") != "production"
 
