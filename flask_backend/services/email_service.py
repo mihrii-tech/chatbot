@@ -50,7 +50,7 @@ def send_lead_email(lead: dict) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"🚴 Nyt lead fra Velohouse Chatbot – {lead.get('name', 'Ukendt')}"
-        msg["From"] = f"Velohouse Chatbot <{GMAIL_USER}>"
+        msg["From"] = f"Velohouse Chatbot <{SMTP_USER}>"
         msg["To"] = LEAD_EMAIL
 
         timestamp = datetime.now().strftime("%d/%m/%Y kl. %H:%M")
