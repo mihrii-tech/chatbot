@@ -22,7 +22,7 @@
   // ─── Konfiguration ─────────────────────────────────────────────
   const CONFIG = Object.assign(
     {
-      apiUrl: "http://localhost:5001",
+      apiUrl: "https://chatbot-3jao.onrender.com",
       primaryColor: "#00b894",
       darkColor: "#1a1a2e",
       accentColor: "#00cec9",
