@@ -9,7 +9,7 @@
 # 5. Generer svar
 
 import logging
-from services.gemini_service import extract_intent, generate_response
+from services.gemini_service import extract_intent, generate_response, generate_response_stream
 from services.shopify_service import search_products
 
 logger = logging.getLogger(__name__)
@@ -231,3 +231,69 @@ def run_rag_pipeline(messages: list) -> dict:
         "suggestLead": suggest_lead,
         "intent": intent,
     }
+
+
+def run_rag_pipeline_stream(messages: list):
+    """
+    Kør RAG pipeline og returner metadata samt stream generator.
+    Returnerer: (metadata_dict, stream_generator)
+    """
+    import time
+    t0 = time.time()
+    user_msg = (messages[-1].get("content") or "") if messages else ""
+    logger.info(f'[RAG Stream] Behandler: "{user_msg[:80]}..."')
+
+    # Step 1: Intent
+    t1 = time.time()
+    intent = extract_intent(user_msg, messages[:-1])
+    t2 = time.time()
+    logger.info(f"[RAG Stream] Intent: {intent} (tog {t2-t1:.2f}s)")
+
+    # Step 2: Produktsøgning
+    products = []
+    is_product_q = (
+        intent.get("bikeType")
+        or intent.get("purpose")
+        or intent.get("brand")
+        or (intent.get("searchKeywords") and len(intent["searchKeywords"]) > 0)
+        or not intent.get("isGeneralQuestion")
+    )
+
+    t4 = t2
+    if is_product_q:
+        query = _build_search_query(intent, user_msg)
+        budget_max = intent.get("budgetMax") or intent.get("budget")
+        filters = {
+            "maxPrice": budget_max,
+            "availableOnly": True,
+            "productType": intent.get("bikeType"),
+        }
+        logger.info(f'[RAG Stream] Søger: "{query}" med filtre: {filters}')
+        t3 = time.time()
+        products = search_products(query, filters, limit=4)
+        t4 = time.time()
+        logger.info(f"[RAG Stream] Fandt {len(products)} produkter (tog {t4-t3:.2f}s)")
+
+    # Step 3: Firmainformation
+    firm_text = _search_firm_info(user_msg)
+
+    # Step 4: Byg kontekst
+    context = _build_context(products, firm_text, intent)
+
+    # Step 6: Lead forslag
+    suggest_lead = _should_suggest_lead(messages, intent)
+
+    metadata = {
+        "products": products[:4],
+        "suggestLead": suggest_lead,
+        "intent": intent,
+    }
+
+    # Step 5: Generer svar stream
+    logger.info(f"[RAG Stream] Starter streaming generation...")
+    stream_generator = generate_response_stream(messages, context)
+
+    logger.info(f"[RAG Stream] Samlet forberedelsestid: {time.time()-t0:.2f}s")
+
+    return metadata, stream_generator
+

@@ -36,12 +36,12 @@ REGLER DU ALTID SKAL FØLGE:
 1. Svar altid på dansk – med stor varme, venlighed og cykelglæde.
 2. Du må KUN anbefale produkter, priser, lagerstatus og links der er oplyst i konteksten. Du må ALDRIG opfinde detaljer selv.
 3. Hvis du mangler info: "Det kan jeg ikke se lige nu, min ven, men må jeg få din mail eller telefonnummer, så vores cykeleksperter kan kontakte dig med det samme?"
-4. Hold svarene informative og hjælpsomme – skriv gerne uddybende svar på op til ca. 5-8 sætninger (eller ca. 10 linjer), hvis kunden søger rådgivning eller forklaringer.
-5. Stil 1-2 venlige, opfølgende spørgsmål for at spore dig ind på kundens behov (f.eks. højde, budget eller cykeltype).
-6. Når du anbefaler produkter, brug præcise priser og korte markdown-links med produktnavnet som linktekst, f.eks. [Gazelle Ultimate C380](url). Skriv ALDRIG rå, lange links.
+4. Svar altid meget KORT, præcist og direkte. Skriv højst 2-3 korte sætninger (eller ca. 4 linjer) pr. svar. Undgå lange forklaringer, medmindre kunden direkte beder om det.
+5. Stil højst 1 venligt, opfølgende spørgsmål (og kun hvis det er nødvendigt for at sparre med kunden).
+6. Når du anbefaler produkter, brug præcise priser og korte markdown-links med produktnavnet som linktekst, f.g. [Gazelle Ultimate C380](url). Skriv ALDRIG rå, lange links.
 7. Hvis kunden vil kontaktes, booke testkørsel eller service, så bed med et smil om navn samt e-mail eller telefonnummer.
 8. Speed pedelecs: Husk kort at nævne, at 45 km/t modeller kræver nummerplade, forsikring og hjelm i Danmark.
-9. Brug emojis aktivt (f.eks. 🚴, ❤️, ✨, 😊) for at gøre samtalen levende og imødekommende.
+9. Brug emojis aktivt (f.g. 🚴, ❤️, ✨, 😊) for at gøre samtalen levende og imødekommende.
 
 VELOHOUSE INFORMATION:
 - Website: velohouse.dk
@@ -197,3 +197,55 @@ Husk: Svar på dansk med stor varme. Anbefal KUN produkter, der er nævnt i kont
         if "API_KEY" in err.upper():
             raise RuntimeError("AI konfigurationsfejl. Kontakt venligst Velohouse på contact@velohouse.dk")
         raise
+
+
+def generate_response_stream(messages: list, context: str):
+    """Generer AI-svar som en stream med RAG kontekst."""
+    try:
+        contents: list[types.Content] = []
+        
+        # Byg historik (seneste 8 beskeder, undtagen den sidste)
+        for msg in messages[-9:-1]:
+            role = "model" if msg["role"] == "assistant" else "user"
+            contents.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
+
+        # Tilføj den aktuelle besked med RAG kontekst
+        last_msg = messages[-1]["content"]
+        user_prompt = f"""─── TILGÆNGELIG KONTEKST (brug KUN disse data til produktanbefalinger) ───
+{context}
+────────────────────────────────────────────────────────────────────────
+
+Brugerens spørgsmål: {last_msg}
+
+Husk: Svar på dansk med stor varme. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
+
+        contents.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
+
+        # Definer konfiguration med system_instruction
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.7,
+        )
+
+        # Generer svar som stream
+        response_stream = _get_client().models.generate_content_stream(
+            model=CHAT_MODEL,
+            contents=contents,
+            config=config
+        )
+        return response_stream
+
+    except Exception as e:
+        logger.error(f"[Gemini] Chat stream fejl: {e}")
+        err = str(e)
+        if "429" in err:
+            raise RuntimeError("AI-tjenesten er midlertidigt overbelastet. Prøv igen om et øjeblik.")
+        if "401" in err or "UNAUTHENTICATED" in err:
+            raise RuntimeError(
+                "AI-konfigurationsfejl: Gemini API nøglen er ugyldig. "
+                "Sæt en korrekt AIza... nøgle i .env filen."
+            )
+        if "API_KEY" in err.upper():
+            raise RuntimeError("AI konfigurationsfejl. Kontakt venligst Velohouse på contact@velohouse.dk")
+        raise
+

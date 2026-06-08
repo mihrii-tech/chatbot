@@ -376,8 +376,68 @@
 
       /* ── Responsive ─────────────────── */
       @media (max-width: 480px) {
-        #vh-window { width: calc(100vw - 16px); right: 8px; bottom: 90px; height: calc(100vh - 110px); border-radius: 16px; }
-        #vh-btn { bottom: 16px; right: 16px; }
+        #vh-window {
+          width: calc(100vw - 32px) !important;
+          left: 16px !important;
+          right: 16px !important;
+          bottom: 92px !important;
+          height: calc(100vh - 130px) !important;
+          height: calc(100dvh - 130px) !important;
+          max-height: 580px !important;
+          border-radius: 16px !important;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+        }
+        #vh-btn {
+          bottom: 16px !important;
+          right: 16px !important;
+        }
+        #vh-btn.vh-open {
+          display: flex !important;
+        }
+        /* Hovedindstillinger for input for at forhindre iOS zoom */
+        #vh-input, 
+        .vh-lead-field input, 
+        .vh-lead-field textarea {
+          font-size: 16px !important;
+        }
+        /* Mobile spacing/padding justeringer */
+        #vh-messages {
+          padding: 12px !important;
+        }
+        .vh-bubble {
+          padding: 10px 14px !important;
+          font-size: 13.5px !important;
+        }
+        #vh-input-area {
+          padding: 10px 12px !important;
+        }
+        /* Produktkort layoutforbedring på smalle skærme */
+        .vh-msg-body {
+          max-width: 85% !important;
+        }
+        .vh-msg.bot.vh-has-products .vh-msg-body {
+          max-width: 95% !important;
+        }
+        .vh-product {
+          font-size: 12px !important;
+        }
+        .vh-prod-img, .vh-prod-img-ph {
+          width: 75px !important;
+          height: 75px !important;
+        }
+        .vh-prod-title {
+          font-size: 12px !important;
+        }
+        .vh-price {
+          font-size: 13.5px !important;
+        }
+        .vh-price-old {
+          font-size: 10px !important;
+        }
+        .vh-prod-link {
+          padding: 5px 8px !important;
+          font-size: 10.5px !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -456,10 +516,12 @@
 
   function openChat() {
     isOpen = true;
+    const btn = document.getElementById("vh-btn");
+    btn?.classList.add("vh-open");
     const iconChat = document.getElementById("vh-icon-chat");
     const iconClose = document.getElementById("vh-icon-close");
-    iconChat.classList.add("hide");
-    iconClose.classList.remove("hide");
+    iconChat?.classList.add("hide");
+    iconClose?.classList.remove("hide");
 
     // Fjern badge
     const badge = document.getElementById("vh-badge");
@@ -477,6 +539,8 @@
 
   function closeChat() {
     isOpen = false;
+    const btn = document.getElementById("vh-btn");
+    btn?.classList.remove("vh-open");
     document.getElementById("vh-icon-chat")?.classList.remove("hide");
     document.getElementById("vh-icon-close")?.classList.add("hide");
     const win = document.getElementById("vh-window");
@@ -493,7 +557,7 @@
     if (!container) return;
 
     const div = document.createElement("div");
-    div.className = "vh-msg bot";
+    div.className = "vh-msg bot" + (products && products.length ? " vh-has-products" : "");
     div.innerHTML = `
       <div class="vh-msg-av">${CONFIG.botAvatar}</div>
       <div class="vh-msg-body">
@@ -507,6 +571,58 @@
 
     // Vis badge hvis lukket
     if (!isOpen) showBadge();
+  }
+
+  function createBotMessageBubble() {
+    const container = document.getElementById("vh-messages");
+    if (!container) return null;
+
+    const id = "vh-msg-" + Math.random().toString(36).substr(2, 9) + Date.now();
+    const div = document.createElement("div");
+    div.className = "vh-msg bot";
+    div.id = id;
+    div.innerHTML = `
+      <div class="vh-msg-av">${CONFIG.botAvatar}</div>
+      <div class="vh-msg-body">
+        <div class="vh-bubble"></div>
+        <div class="vh-msg-time">${timeStr()}</div>
+      </div>
+    `;
+    container.appendChild(div);
+    scrollBottom();
+
+    // Vis badge hvis lukket
+    if (!isOpen) showBadge();
+    return id;
+  }
+
+  function updateBotMessageText(id, text) {
+    const div = document.getElementById(id);
+    if (!div) return;
+    const bubble = div.querySelector(".vh-bubble");
+    if (bubble) {
+      bubble.innerHTML = markdownToHtml(text);
+    }
+    scrollBottom();
+  }
+
+  function appendProductsToBotMessage(id, products) {
+    if (!products || !products.length) return;
+    const div = document.getElementById(id);
+    if (!div) return;
+    div.classList.add("vh-has-products");
+    const msgBody = div.querySelector(".vh-msg-body");
+    if (msgBody) {
+      const timeEl = msgBody.querySelector(".vh-msg-time");
+      const prodContainer = document.createElement("div");
+      prodContainer.innerHTML = renderProductCards(products);
+      if (timeEl) {
+        msgBody.insertBefore(prodContainer.firstElementChild, timeEl);
+      } else {
+        msgBody.appendChild(prodContainer.firstElementChild);
+      }
+      scrollBottom();
+    }
   }
 
   function addUserMessage(text) {
@@ -717,21 +833,88 @@
           message: text,
           sessionId,
           history: messages.slice(-16, -1), // send historik men ikke den aktuelle
+          stream: true,
         }),
       });
 
-      const data = await resp.json();
-      hideTyping();
+      const contentType = resp.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream")) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let botMessageText = "";
+        let botProducts = null;
+        let botSuggestLead = false;
 
-      if (data.success) {
-        messages.push({ role: "assistant", content: data.message });
-        addBotMessage(data.message, data.products);
+        hideTyping();
+        const bubbleId = createBotMessageBubble();
 
-        if (data.suggestLead && messages.length >= 6) {
-          setTimeout(showLeadForm, 500);
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop(); // behold delvis linje i buffer
+
+            let currentEvent = "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              if (trimmed.startsWith("event:")) {
+                currentEvent = trimmed.substring(6).trim();
+              } else if (trimmed.startsWith("data:")) {
+                const dataStr = trimmed.substring(5).trim();
+                try {
+                  const data = JSON.parse(dataStr);
+                  if (currentEvent === "info") {
+                    botProducts = data.products;
+                    botSuggestLead = data.suggestLead;
+                  } else if (currentEvent === "chunk") {
+                    botMessageText += data.text;
+                    updateBotMessageText(bubbleId, botMessageText);
+                  } else if (currentEvent === "error") {
+                    updateBotMessageText(bubbleId, "⚠️ " + data.error);
+                  }
+                } catch (e) {
+                  console.error("Fejl ved parsing af stream data:", e);
+                }
+              }
+            }
+          }
+
+          // Render produkter til sidst hvis fundet
+          if (botProducts && botProducts.length) {
+            appendProductsToBotMessage(bubbleId, botProducts);
+          }
+
+          if (botMessageText) {
+            messages.push({ role: "assistant", content: botMessageText });
+          }
+
+          if (botSuggestLead && messages.length >= 6) {
+            setTimeout(showLeadForm, 500);
+          }
+        } catch (streamErr) {
+          console.error("[VH Chatbot] Streamfejl:", streamErr);
+          updateBotMessageText(bubbleId, "⚠️ Netværksfejl under modtagelse af svar.");
         }
       } else {
-        addBotMessage(data.error || "Noget gik galt. Prøv igen. 🙏");
+        // Fallback til normal JSON parsing
+        const data = await resp.json();
+        hideTyping();
+
+        if (data.success) {
+          messages.push({ role: "assistant", content: data.message });
+          addBotMessage(data.message, data.products);
+
+          if (data.suggestLead && messages.length >= 6) {
+            setTimeout(showLeadForm, 500);
+          }
+        } else {
+          addBotMessage(data.error || "Noget gik galt. Prøv igen. 🙏");
+        }
       }
     } catch (err) {
       hideTyping();
