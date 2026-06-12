@@ -162,7 +162,7 @@ def generate_response(messages: list, context: str) -> str:
 
 Brugerens spørgsmål: {last_msg}
 
-Husk: Svar på dansk med stor varme. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
+Husk: Svar på dansk, og vær altid høflig og professionel. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
 
         contents.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
 
@@ -217,7 +217,7 @@ def generate_response_stream(messages: list, context: str):
 
 Brugerens spørgsmål: {last_msg}
 
-Husk: Svar på dansk med stor varme. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
+Husk: Svar på dansk, og vær altid høflig og professionel. Anbefal KUN produkter, der er nævnt i konteksten ovenfor, og brug pæne markdown-links."""
 
         contents.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
 
