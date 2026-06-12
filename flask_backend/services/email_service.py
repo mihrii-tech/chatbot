@@ -11,17 +11,32 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-SMTP_HOST = os.getenv("SMTP_HOST", "mail.velohouse.dk")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "") or os.getenv("GMAIL_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASSWORD", "") or os.getenv("GMAIL_APP_PASSWORD", "")
 LEAD_EMAIL = os.getenv("LEAD_EMAIL", "contact@velohouse.dk")
 
+# Vælg SMTP host baseret på om der bruges Gmail
+SMTP_HOST = os.getenv("SMTP_HOST")
+if not SMTP_HOST:
+    if "gmail.com" in SMTP_USER.lower():
+        SMTP_HOST = "smtp.gmail.com"
+    else:
+        SMTP_HOST = "mail.velohouse.dk"
+
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+
 
 def send_lead_email(lead: dict) -> bool:
-    """Send lead notifikation til butikken via Gmail SMTP."""
-    if not SMTP_USER or not SMTP_PASS:
-        logger.warning("[Email] SMTP credentials ikke konfigureret – lead gemmes kun i database")
+    """Send lead notifikation til butikken via SMTP."""
+    # Tjek om credentials er tomme eller indeholder standard placeholders
+    is_placeholder = (
+        "din@gmail.com" in SMTP_USER.lower() or 
+        "udfyld" in SMTP_USER.lower() or 
+        "xxxx" in SMTP_PASS or 
+        "udfyld" in SMTP_PASS.lower()
+    )
+    if not SMTP_USER or not SMTP_PASS or is_placeholder:
+        logger.warning("[Email] SMTP credentials er ikke konfigureret eller bruger placeholders – lead gemmes kun i database")
         return False
 
     # Byg samtalehistorik til emailen
